@@ -14,7 +14,7 @@ from pdftk.pdftk_macos import PDFTKMacos
 from os_enum.os import OSEnum
 
 
-class PDFWrapper(Canvas):
+class PDFGenerator(Canvas):
 
     def __init__(self, filename, pagesize=None, bottomup=1, pageCompression=None, invariant=None, verbosity=0, encrypt=None, cropMarks=None, pdfVersion=None, enforceColorSpace=None, initialFontName=None, initialFontSize=None, initialLeading=None, cropBox=None, artBox=None, trimBox=None, bleedBox=None, lang=None, batchSize=20):
         super().__init__(filename, pagesize, bottomup, pageCompression, invariant, verbosity, encrypt, cropMarks, pdfVersion, enforceColorSpace, initialFontName, initialFontSize, initialLeading, cropBox, artBox, trimBox, bleedBox, lang)
@@ -94,7 +94,7 @@ class PDFWrapper(Canvas):
             shutil.rmtree(self.tmp_folder_path)
 
 if __name__ == '__main__':
-    pdfgen = PDFWrapper(filename="/CAMS/test.pdf")
+    pdfgen = PDFGenerator(filename="/CAMS/test.pdf")
 
     # 첫 번째 페이지
     pdfgen.drawString(100, 750, "Page 1")
