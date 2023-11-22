@@ -1,18 +1,22 @@
-from reportlab.pdfgen.canvas import Canvas
 import platform
 from queue import SimpleQueue
 import uuid
 import os
 
+from overrides import overrides
 from reportlab.pdfbase import pdfdoc
+from reportlab.pdfgen.canvas import Canvas
+
+from pdftk.pdftk_base import PDFTKBase
 from pdftk.pdftk_linux import PDFTKLinux
 from pdftk.pdftk_window import PDFTKWindow
 from pdftk.pdftk_macos import PDFTKMacos
 from os_enum.os import OSEnum
 
+
 class PDFWrapper(Canvas):
 
-    def __init__(self, filename, pagesize=None, bottomup=1, pageCompression=None, invariant=None, verbosity=0, encrypt=None, cropMarks=None, pdfVersion=None, enforceColorSpace=None, initialFontName=None, initialFontSize=None, initialLeading=None, cropBox=None, artBox=None, trimBox=None, bleedBox=None, lang=None, batchSize=10):
+    def __init__(self, filename, pagesize=None, bottomup=1, pageCompression=None, invariant=None, verbosity=0, encrypt=None, cropMarks=None, pdfVersion=None, enforceColorSpace=None, initialFontName=None, initialFontSize=None, initialLeading=None, cropBox=None, artBox=None, trimBox=None, bleedBox=None, lang=None, batchSize=20):
         super().__init__(filename, pagesize, bottomup, pageCompression, invariant, verbosity, encrypt, cropMarks, pdfVersion, enforceColorSpace, initialFontName, initialFontSize, initialLeading, cropBox, artBox, trimBox, bleedBox, lang)
         self.invariant = invariant
         self.pdfVersion = pdfVersion
@@ -22,7 +26,12 @@ class PDFWrapper(Canvas):
         self.pdftk = self._set_pdftK()
         self.tmp_folder_path = self._make_tmp_folder(filename)
 
-    def _set_pdftK(self):
+    def _set_pdftK(self) -> PDFTKBase:
+        """
+        Create an instance to use PDFTK suitable for OS
+        Returns:
+            PDFTKBase: PDFTK subclass instance
+        """
         os_ = platform.system()
         if os_ == OSEnum.LINUX.value:
             return PDFTKLinux()
@@ -30,7 +39,18 @@ class PDFWrapper(Canvas):
             return PDFTKWindow()
         return PDFTKMacos()
     
-    def _make_tmp_folder(self, filename) -> str:
+    def _make_tmp_folder(self, filename: str) -> str:
+        """
+        Create tmp folder for temporary storage
+        Args:
+            filename (str): input filename
+
+        Raises:
+            FileExistsError: Error when there is a duplicate tmp folder
+            
+        Returns:
+            str: Created tmp folder path
+        """
         parent_directory = os.path.dirname(filename)
         tmp_folder_nm = f"{str(uuid.uuid4())}_tmp"
         tmp_path = os.path.join(parent_directory, tmp_folder_nm)
@@ -40,6 +60,7 @@ class PDFWrapper(Canvas):
         except FileExistsError:
             raise FileExistsError(f"{tmp_path} alreay exists!")
     
+    @overrides
     def showPage(self):
         doc_page_count = self._doc.pageCounter
         if doc_page_count-1 == self.batch_size:
@@ -52,6 +73,7 @@ class PDFWrapper(Canvas):
             self._make_preamble()   
         super().showPage()
 
+    @overrides
     def save(self):
         try:
             if len(self._code): self.showPage()
