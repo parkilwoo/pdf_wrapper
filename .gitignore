@@ -163,3 +163,5 @@ cython_debug/
 .vscode/
 pdftk/
 os_enum/
+sample/
+test/

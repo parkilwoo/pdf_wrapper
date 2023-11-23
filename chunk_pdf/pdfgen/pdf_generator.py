@@ -1,22 +1,9 @@
-# import platform
-# from queue import SimpleQueue
-# import uuid
-# import os
-
-from overrides import overrides
 from reportlab.pdfbase import pdfdoc
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.lib.colors import _chooseEnforceColorSpace
 from reportlab import rl_config
 
 from chunk_pdf.pdfbase.pdf_doc import PDFDocumentWrapper
-
-# from pdf_wrapper.pdftk.pdftk_base import PDFTKBase
-# from pdf_wrapper.pdftk.pdftk_linux import PDFTKLinux
-# from pdf_wrapper.pdftk.pdftk_window import PDFTKWindow
-# from pdf_wrapper.pdftk.pdftk_macos import PDFTKMacos
-# from pdf_wrapper.os_enum.os import OSEnum
-
 
 class PDFGenerator(Canvas):
 
