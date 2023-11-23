@@ -3,7 +3,7 @@ from overrides import overrides
 from reportlab import rl_config
 from reportlab.pdfbase.pdfdoc import PDFFile, PDFDocument, PDFIndirectObject, PDFCrossReferenceTable, PDFTrailer
 from reportlab.lib.utils import makeFileName, isUnicode, isStr
-from pdf_wrapper.pdfbase.chunk_list import ChukedList, ListFull
+from chunk_pdf.pdfbase.chunk_list import ChukedList, ListFull
 
 class PDFFileWrapper(PDFFile):
 

@@ -1,4 +1,4 @@
-from pdf_wrapper.pdfgen.pdf_generator import PDFGenerator
+from chunk_pdf.pdfgen.pdf_generator import PDFGenerator
 from datetime import datetime
 from reportlab.lib.units import mm
 from memory_profiler import profile

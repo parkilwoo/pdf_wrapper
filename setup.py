@@ -1,9 +1,10 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='pdf_wrapper',
+    name='chunk_pdf',
     version='0.1.0',
-    description='When creating a PDF with a large number of pages using reportlab, it is slow and consumes a lot of resources. This was resolved by merging after batch processing.',
+    description='When creating a PDF with a large number of pages using reportlab, it is slow and consumes a lot of resources. This was resolved by using chunk processing.',
+    long_description='When creating a PDF with a large number of pages using reportlab, it is slow and consumes a lot of resources. This was resolved by using chunk processing.',
     author='Parkilwoo',
     author_email='bagilu3@gmail.com',
     url='https://github.com/parkilwoo/pdf_wrapper',

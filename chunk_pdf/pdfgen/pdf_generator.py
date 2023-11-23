@@ -9,7 +9,7 @@ from reportlab.pdfgen.canvas import Canvas
 from reportlab.lib.colors import _chooseEnforceColorSpace
 from reportlab import rl_config
 
-from pdf_wrapper.pdfbase.pdf_doc import PDFDocumentWrapper
+from chunk_pdf.pdfbase.pdf_doc import PDFDocumentWrapper
 
 # from pdf_wrapper.pdftk.pdftk_base import PDFTKBase
 # from pdf_wrapper.pdftk.pdftk_linux import PDFTKLinux
