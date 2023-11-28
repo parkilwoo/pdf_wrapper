@@ -4,6 +4,7 @@ from reportlab.lib.colors import _chooseEnforceColorSpace
 from reportlab import rl_config
 
 from chunk_pdf.pdfbase.pdf_doc import PDFDocumentWrapper
+from chunk_pdf.pdfbase.chunk_file import KB
 
 class PDFGenerator(Canvas):
 
@@ -25,7 +26,7 @@ class PDFGenerator(Canvas):
                  trimBox=None,
                  bleedBox=None,
                  lang=None,
-                 chunkSize = 10
+                 chunkSize = 1*KB
                  ):
         """Create a canvas of a given size. etc.
 
@@ -54,7 +55,8 @@ class PDFGenerator(Canvas):
         self._doc = PDFDocumentWrapper(compression=pageCompression,
                                        invariant=invariant, filename=filename,
                                        pdfVersion=pdfVersion or pdfdoc.PDF_VERSION_DEFAULT,
-                                       lang=lang
+                                       lang=lang,
+                                       chunk_size=chunkSize
                                        )
 
         self._enforceColorSpace = _chooseEnforceColorSpace(enforceColorSpace)
@@ -103,4 +105,3 @@ class PDFGenerator(Canvas):
         self.state_stack = []
 
         self.setEncrypt(encrypt)
-        self.chunkSize = chunkSize

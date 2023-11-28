@@ -2,21 +2,40 @@ from overrides import overrides
 
 from reportlab import rl_config
 from reportlab.pdfbase.pdfdoc import PDFFile, PDFDocument, PDFIndirectObject, PDFCrossReferenceTable, PDFTrailer
-from reportlab.lib.utils import makeFileName, isUnicode, isStr
-from chunk_pdf.pdfbase.chunk_list import ChukedList, ListFull
+from reportlab.lib.utils import makeFileName, isStr
+from chunk_pdf.pdfbase.chunk_file import ChunkedFileIO
 
+PDF_VERSION_DEFAULT = (1, 3)
+
+def pdfdocEnc(x):
+    return x.encode('extpdfdoc') if isinstance(x,str) else x
 class PDFFileWrapper(PDFFile):
+
+    ### just accumulates strings: keeps track of current offset
+    def __init__(self,pdfVersion=PDF_VERSION_DEFAULT):
+        self.bytes = bytearray()
+        self.write = self.bytes.extend
+        self.offset = 0
+        ### chapter 5
+        # Following Ken Lunde's advice and the PDF spec, this includes
+        # some high-order bytes.  I chose the characters for Tokyo
+        # in Shift-JIS encoding, as these cannot be mistaken for
+        # any other encoding, and we'll be able to tell if something
+        # has run our PDF files through a dodgy Unicode conversion.
+        self.add((pdfdocEnc("%%PDF-%s.%s" % pdfVersion) +
+            b'\n%\223\214\213\236 ReportLab Generated PDF document http://www.reportlab.com\n'
+            ))
 
     @overrides
     def format(self, document):
-        yield from self.strings
+        return self.bytes
 
 
 class PDFDocumentWrapper(PDFDocument):
 
-    def __init__(self, dummyoutline=0, compression=rl_config.pageCompression, invariant=rl_config.invariant, filename=None, pdfVersion=..., lang=None, chunkSize = 10):
+    def __init__(self, dummyoutline=0, compression=rl_config.pageCompression, invariant=rl_config.invariant, filename=None, pdfVersion=..., lang=None, chunk_size = None):
         super().__init__(dummyoutline, compression, invariant, filename, pdfVersion, lang)
-        self.chunkedList = ChukedList(chunkSize)
+        self.chunk_size = chunk_size
 
     @overrides
     def format(self):
@@ -108,8 +127,9 @@ class PDFDocumentWrapper(PDFDocument):
         else:
             raise TypeError('Cannot use %s as a filename or file' % repr(filename)) 
 
-        data_generator = self.GetPDFData(canvas)
-        self._saveFileUseChunkSize(data_generator, f)
+        data = self.GetPDFData(canvas)
+        chunk_file_io = ChunkedFileIO(chunk_size=self.chunk_size)
+        chunk_file_io.file_write(data, f)
 
         if myfile:
             f.close()
@@ -118,21 +138,3 @@ class PDFDocumentWrapper(PDFDocument):
                 from reportlab.lib.utils import markfilename
                 markfilename(filename) # do platform specific file junk
         if getattr(canvas,'_verbosity',None): print('saved %s' % (filename,))
-
-    def _saveFileUseChunkSize(self, data_generator, file_io):
-        for data in data_generator:        
-            try:
-                self.chunkedList.append(data)
-            except ListFull:
-                file_data = self.chunkedList.convertBytes()
-                self._fileWrite(file_data, file_io)
-                self.chunkedList.append(data)
-        
-        if not self.chunkedList.is_empty():
-            file_data = self.chunkedList.convertBytes()
-            self._fileWrite(file_data, file_io)
-
-    def _fileWrite(self, data: bytes, file_io):
-        if isUnicode(data):
-            data = data.encode('latin1')
-        file_io.write(data)
