@@ -1,9 +1,11 @@
 from overrides import overrides
+from queue import Queue
 
 from reportlab import rl_config
 from reportlab.pdfbase.pdfdoc import PDFFile, PDFDocument, PDFIndirectObject, PDFCrossReferenceTable, PDFTrailer
 from reportlab.lib.utils import makeFileName, isStr
-from chunk_pdf.pdfbase.chunk_file import ChunkedFileIO
+from batch_pdf.pdfbase.batch_queue import BatchedQueue
+from io import FileIO
 
 PDF_VERSION_DEFAULT = (1, 3)
 
@@ -12,10 +14,19 @@ def pdfdocEnc(x):
 class PDFFileWrapper(PDFFile):
 
     ### just accumulates strings: keeps track of current offset
-    def __init__(self,pdfVersion=PDF_VERSION_DEFAULT):
-        self.bytes = bytearray()
-        self.write = self.bytes.extend
+    def __init__(self,pdfVersion=PDF_VERSION_DEFAULT, batch_size=None, file: FileIO = None):
+        self.strings = BatchedQueue(self.batch_queue_full_job, batch_size)
+        self.write = self.strings.add
         self.offset = 0
+        
+        if file:
+            # File Write
+            self.file = file
+            self.file_write = self.file.write
+        else:
+            # To Byte
+            self.file = bytearray()
+            self.file_write = self.file.extend
         ### chapter 5
         # Following Ken Lunde's advice and the PDF spec, this includes
         # some high-order bytes.  I chose the characters for Tokyo
@@ -25,17 +36,40 @@ class PDFFileWrapper(PDFFile):
         self.add((pdfdocEnc("%%PDF-%s.%s" % pdfVersion) +
             b'\n%\223\214\213\236 ReportLab Generated PDF document http://www.reportlab.com\n'
             ))
+        
+    @overrides
+    def add(self, s):
+        """should be constructed as late as possible, return position where placed"""
+        s = pdfdocEnc(s)
+        result = self.offset
+        self.offset = result+len(s)
+        self.write(s)
+        return result
 
     @overrides
     def format(self, document):
-        return self.bytes
+        self.strings.last_job()
+        if isinstance(self.file, bytearray):
+            return self.file
+        return True
+    
+
+    def batch_queue_full_job(self, batch_queue: Queue):
+        """_summary_
+        Method to be executed when the batch list is full
+        Args:
+            batch_list (list): batch_list
+        """
+        while not batch_queue.empty():
+            self.file_write(batch_queue.get_nowait())
 
 
 class PDFDocumentWrapper(PDFDocument):
 
-    def __init__(self, dummyoutline=0, compression=rl_config.pageCompression, invariant=rl_config.invariant, filename=None, pdfVersion=..., lang=None, chunk_size = None):
+    def __init__(self, dummyoutline=0, compression=rl_config.pageCompression, invariant=rl_config.invariant, filename=None, pdfVersion=..., lang=None, batch_size = None):
         super().__init__(dummyoutline, compression, invariant, filename, pdfVersion, lang)
-        self.chunk_size = chunk_size
+        self.batch_size = batch_size
+        self.file = None
 
     @overrides
     def format(self):
@@ -60,7 +94,7 @@ class PDFDocumentWrapper(PDFDocument):
         idToOf = self.idToOffset
         ### note that new entries may be "appended" DURING FORMATTING
         # __accum__ allows objects to know where they are in the file etc etc
-        self.__accum__ = File = PDFFileWrapper(self._pdfVersion) # output collector
+        self.__accum__ = File = PDFFileWrapper(self._pdfVersion, self.batch_size, self.file) # output collector
         while True:
             counter += 1 # do next object...
             if counter not in numbertoid: break
@@ -105,7 +139,8 @@ class PDFDocumentWrapper(PDFDocument):
             ds.sign(File)
         # return string format for pdf file
         return File.format(self)
-    
+
+
     @overrides
     def SaveToFile(self, filename, canvas):
         if getattr(self,'_savedToFile',False):
@@ -113,8 +148,8 @@ class PDFDocumentWrapper(PDFDocument):
         self._savedToFile = True
         if hasattr(getattr(filename, "write",None),'__call__'):
             myfile = 0
-            f = filename
-            filename = getattr(f,'name',None)
+            self.file = filename
+            filename = getattr(self.file,'name',None)
             if isinstance(filename,int):
                 filename = '<os fd:%d>'% filename
             elif not isStr(filename): #try to fix bug reported by Robert Schroll <rschroll at gmail.com> 
@@ -123,16 +158,14 @@ class PDFDocumentWrapper(PDFDocument):
         elif isStr(filename):
             myfile = 1
             filename = makeFileName(filename)
-            f = open(filename, "wb")
+            self.file = open(filename, "wb")
         else:
             raise TypeError('Cannot use %s as a filename or file' % repr(filename)) 
-
-        data = self.GetPDFData(canvas)
-        chunk_file_io = ChunkedFileIO(chunk_size=self.chunk_size)
-        chunk_file_io.file_write(data, f)
+        
+        self.GetPDFData(canvas)
 
         if myfile:
-            f.close()
+            self.file.close()
             import os
             if os.name=='mac':
                 from reportlab.lib.utils import markfilename
