@@ -1,21 +1,18 @@
 from overrides import overrides
-from queue import Queue
 
 from reportlab import rl_config
-from reportlab.pdfbase.pdfdoc import PDFFile, PDFDocument, PDFIndirectObject, PDFCrossReferenceTable, PDFTrailer
+from reportlab.pdfbase.pdfdoc import PDFFile, PDFDocument, PDFIndirectObject, PDFCrossReferenceTable, PDFTrailer, pdfdocEnc
 from reportlab.lib.utils import makeFileName, isStr
-from batch_pdf.pdfbase.batch_queue import BatchedQueue
+from batch_pdf.pdfbase.batch_list import BatchedList
 from io import FileIO
 
 PDF_VERSION_DEFAULT = (1, 3)
 
-def pdfdocEnc(x):
-    return x.encode('extpdfdoc') if isinstance(x,str) else x
 class PDFFileWrapper(PDFFile):
 
     ### just accumulates strings: keeps track of current offset
     def __init__(self,pdfVersion=PDF_VERSION_DEFAULT, batch_size=None, file: FileIO = None):
-        self.strings = BatchedQueue(self.batch_queue_full_job, batch_size)
+        self.strings = BatchedList(self.batch_list_full_job, batch_size)
         self.write = self.strings.add
         self.offset = 0
         
@@ -36,15 +33,6 @@ class PDFFileWrapper(PDFFile):
         self.add((pdfdocEnc("%%PDF-%s.%s" % pdfVersion) +
             b'\n%\223\214\213\236 ReportLab Generated PDF document http://www.reportlab.com\n'
             ))
-        
-    @overrides
-    def add(self, s):
-        """should be constructed as late as possible, return position where placed"""
-        s = pdfdocEnc(s)
-        result = self.offset
-        self.offset = result+len(s)
-        self.write(s)
-        return result
 
     @overrides
     def format(self, document):
@@ -54,14 +42,14 @@ class PDFFileWrapper(PDFFile):
         return True
     
 
-    def batch_queue_full_job(self, batch_queue: Queue):
+    def batch_list_full_job(self, batch_list: list):
         """_summary_
         Method to be executed when the batch list is full
         Args:
             batch_list (list): batch_list
         """
-        while not batch_queue.empty():
-            self.file_write(batch_queue.get_nowait())
+        self.file_write(b''.join(batch_list))
+        batch_list.clear()
 
 
 class PDFDocumentWrapper(PDFDocument):
@@ -153,7 +141,7 @@ class PDFDocumentWrapper(PDFDocument):
             if isinstance(filename,int):
                 filename = '<os fd:%d>'% filename
             elif not isStr(filename): #try to fix bug reported by Robert Schroll <rschroll at gmail.com> 
-                filename = '<%s@0X%8.8X>' % (f.__class__.__name__,id(f))
+                filename = '<%s@0X%8.8X>' % (self.file.__class__.__name__,id(self.file))
             filename = makeFileName(filename)
         elif isStr(filename):
             myfile = 1
